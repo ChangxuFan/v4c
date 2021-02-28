@@ -1,0 +1,22 @@
+Experiment description
+Sequenced Read Pairs
+ Normal Paired
+ Chimeric Paired
+ Chimeric Ambiguous
+ Unmapped
+ Ligation Motif Present
+Alignable (Normal+Chimeric Paired)
+Unique Reads
+PCR Duplicates
+Optical Duplicates
+Library Complexity Estimate
+Intra-fragment Reads
+Below MAPQ Threshold
+Hi-C Contacts
+ Ligation Motif Present
+ 3' Bias (Long Range)
+ Pair Type %(L-I-O-R)
+Inter-chromosomal
+Intra-chromosomal
+Short Range (<20Kb)
+Long Range (>20Kb)
