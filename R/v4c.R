@@ -1,11 +1,21 @@
 #
-V4C.juicer <- function (pos.list, length, resolution, genome.build, out.root.name=NULL, plot, observed_or_oe, normalization,
-                        hic.file, help.only, bdg.dir=NULL, shift=0, add.vline=NULL, liftover.params=NULL,
-                        use.1.6 = F, strip.chr = F,...) {
-
+V4C.juicer <- function (regions = NULL, pos.list, length, resolution, genome.build, 
+                        hic.file, observed_or_oe, normalization, shift=0, 
+                        bdg.dir=NULL, out.root.name=NULL,
+                        threads = 1, use.1.6 = F,
+                        plot = F, help.only = F, strip.chr = F, add.vline=NULL, liftover.params=NULL, ...) {
+  # pos.list is actually expecting a vector. back in those days when my code was shitty ...
   if (!is.null(bdg.dir))
     plot <- F
-
+  
+  if (!is.null(regions)) {
+    if (is.character(regions))
+      regions <- utilsFanc::import.bed.fanc(regions, return.gr = T, use.rtracklayer.naming = T)
+    # take the center of the regions:
+    regions <- utilsFanc::gr.center(regions)
+    pos.list <- utilsFanc::gr.get.loci(regions) %>% sub("-.+$", "", .)
+    out.root.name <- paste0(out.root.name, "_", regions$name)
+  }
   
   genome.bins.directory <- paste0("~/genomes/", genome.build, "/bins/")
 
@@ -32,7 +42,7 @@ V4C.juicer <- function (pos.list, length, resolution, genome.build, out.root.nam
   prox.df$prox <- paste0(prox.df$V1, ":", prox.df$V2)
   t.dir <- tempdir()
 
-  trash <- lapply(pos.list, function(pos) {
+  trash <- mclapply(pos.list, function(pos) {
     npos <- as.integer(sub(".*:(.*)", "\\1", pos))
     chr <- sub("(.*):.*", "\\1", pos)
     distalStart=npos-length
@@ -60,7 +70,7 @@ V4C.juicer <- function (pos.list, length, resolution, genome.build, out.root.nam
     print(paste0("~/scripts/hic/v4/hic2v4.sh ", chr, " ", gene, " ",paste0(t.dir, "/", pos, ".txt") , " ", npos))
     system(paste0("~/scripts/hic/v4/hic2v4.sh ", chr, " ", gene, " ",paste0(t.dir, "/", pos, ".txt") , " ", npos))
     return(NULL)
-  })
+  }, mc.cores = threads, mc.cleanup = T)
   v4.list <- lapply(pos.list, function (x) {
     return(V4C(pos = x, length=length, resolution=resolution, plot=plot, normalization=paste0( normalization, ".",observed_or_oe),
                indir=t.dir, ...))
@@ -69,7 +79,8 @@ V4C.juicer <- function (pos.list, length, resolution, genome.build, out.root.nam
     v4c2bdg(v4c.list = v4.list, bdg.dir = bdg.dir, hic.file = hic.file,
             length = length, resolution = resolution, shift = shift,
             add.vline = add.vline, liftover.params = liftover.params, 
-            root.name = out.root.name, genome = genome.build)
+            root.name = out.root.name, genome = genome.build,
+            normalization = normalization, threads = threads)
   }
 
   return(v4.list)
@@ -278,13 +289,20 @@ resolution.convert <- function(x, out.res) {
 }
 
 v4c2bdg <- function(v4c.list, bdg.dir, hic.file, length, root.name = NULL, genome = NULL,
-                    resolution, add.vline=NULL, shift=0, liftover.params = NULL) {
+                    resolution, normalization,add.vline=NULL, shift=0, liftover.params = NULL,
+                    threads = 1) {
   if (is.null(root.name)) {
     root.name <- basename(hic.file)
   }
+  
+  if (length(root.name) == 1) {
+    root.name <- rep(root.name, length(v4c.list))
+  }
   options(scipen = 20)
   system(paste0("mkdir -p ", bdg.dir))
-  lapply(v4c.list, function(v4) {
+  mclapply(seq_along(v4c.list), function(i) {
+    v4 <- v4c.list[[i]]
+    root.name <- root.name[i]
     chr = sub(":.+", "", v4$prox [1])
     v4$prox <- (sub(".+:", "", v4$prox [1]) %>% as.numeric + shift) %>% paste0(chr, ":", .)
     v4$distal <- v4$distal + shift
@@ -296,8 +314,9 @@ v4c2bdg <- function(v4c.list, bdg.dir, hic.file, length, root.name = NULL, genom
       dplyr::select(chr, left, right, value)
     bdg <- rbind(zero, bdg)
 
-    bdg.name <- paste0(bdg.dir, "/", root.name, "_", genome, "_", prox, "_",resolution,"_", length,
-     "_shift_",shift,  ".bdg")
+    bdg.name <- paste0(bdg.dir, "/", root.name, "_", normalization, "_", genome, "_", prox, "_",
+                       resolution/1000, "k","_", length/1000, "k",
+     "_shift_",shift,  ".bedgraph")
     write.table(bdg, bdg.name, sep = "\t", quote = F, col.names = F, row.names = F)
     if (!is.null(liftover.params))
       bdg.name <- do.call(lift.over.core, c(liftover.params, list(in.file = bdg.name, out.file = paste0(bdg.name, ".lift"))))
@@ -313,7 +332,7 @@ v4c2bdg <- function(v4c.list, bdg.dir, hic.file, length, root.name = NULL, genom
         bed.name <- do.call(lift.over.core, c(liftover.params, list(in.file = bed.name, out.file = paste0(bed.name, ".lift"))))
       system(paste0("~/scripts/bed_browser_v2.sh ", bed.name))
     }
-  })
+  }, mc.cores = threads, mc.cleanup = T)
 }
 
 lift.over.core <- function(in.file, out.file=NULL, in.genome, out.genome,
@@ -341,19 +360,75 @@ lift.over.core <- function(in.file, out.file=NULL, in.genome, out.genome,
   return(out.file)
 }
 
-V4C.loop <- function(hic.df, bdg.dir, length = 2000000, resolution = 5000, normalization = "VC_SQRT") {
+V4C.loop <- function(hic.df = NULL, 
+                     files, regions, region.names = NULL, is.bed = F, bed.add.prefix = NULL,
+                     genome, smart.file.name = T, shift = 0, use.1.6 = T, 
+                     bdg.dir, length = 2000000, resolution = 5000, normalization = "VC_SQRT",
+                     threads = 1) {
   # fields required: file, genome, region, root.name, region.name, shift, use.1.6
+  if (is.null (hic.df)) {
+    if (is.null(names(files))) {
+      if (smart.file.name == T) {
+        file.names <- sapply(files, function(file) {
+          if (grepl("aligned", file) && grepl("inter", file)) {
+            res <- file %>% sub("//", "/", .) %>% gsub("/*mega", "", .) %>% sub("/*aligned/", "_", .) %>% 
+              basename()
+            return(res)
+          } else {
+            return(basename(file))
+          }
+        }) %>% `names<-`(NULL)
+      } else {
+        stop("either smart.file.name = T or files must be named")
+      }
+    }
+    names(files) <- file.names
+    if (is.bed == T) {
+      regions <- lapply(regions, function(x) {
+        gr <- abaFanc::import.bed.fanc(bed = x, return.gr = T, no.shift = F)
+        center <- gr %>% resize(width = 1, fix = "center") %>% start()
+        res <- paste0(as.character(seqnames(gr)), ":", center)
+        names(res) <- gr$forth
+        return(res)
+      }) %>% unlist()
+      if (!is.null(bed.add.prefix)) {
+        names(regions) <- paste0(bed.add.prefix, "_", names(regions))
+      }
+    }
+    if (is.null(names(regions))) {
+      if (!is.null(region.names)) {
+        names(regions) <- region.names
+      } else {
+        names(regions) <- paste0("region_", 1:length(regions))
+      }
+    }
+    if (any(duplicated(names(regions)))) {
+      stop(paste0("some region names are duplicated, including: \n", 
+                  names(regions) %>% .[duplicated(.)] %>% .[1]))
+    }
+    
+    
+    hic.df <- lapply(names(files), function(file.name) {
+      file <- files[file.name]
+      df <- data.frame(file = file, genome = genome, region = regions, 
+                       root.name = file.name, region.names = names(regions), shift = shift, 
+                       use.1.6 = use.1.6)
+      return(df)
+    }) %>% Reduce(rbind, .)
+  }
+
   if (is.character(hic.df))
     hic.df <- read.table(hic.df, header = T)
   hic.df %>% split(., f = 1:nrow(hic.df)) %>% 
-    lapply(function(x) {
-      trash <- V4C.juicer(x$region, length = length, resolution=resolution, genome.build = x$genome, plot = F,
+    utilsFanc::safelapply(function(x) {
+      trash <- V4C.juicer(pos.list = x$region, length = length, resolution=resolution, genome.build = x$genome, plot = F,
                                 observed_or_oe = "observed", normalization = normalization, 
-                          hic.file = x$file,
+                          hic.file = x$file, 
                                 help.only = F, # add.vline=list(c(45279477, 45279842), c(44952775, 44957602)),
                                 rm.zero=F, shift = x$shift, out.root.name = paste0(x$root.name, "_", x$region.name),
                                 bdg.dir = bdg.dir, use.1.6 = x$use.1.6)
       return()
-    })
+    }, threads = threads)
   return()
 }
+

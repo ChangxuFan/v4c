@@ -1,5 +1,5 @@
 pct.capture <- function(bams, df, threads, outfile = NULL) {
-  stat <- mclapply(seq_along(bams), function(i) {
+  stat <- utilsFanc::safelapply(seq_along(bams), function(i) {
   	  bam <- bams[i]
   	  sample.name <- names(bams)[i]
   	  total <- Rsamtools::countBam(file = bam)$records
@@ -14,7 +14,7 @@ pct.capture <- function(bams, df, threads, outfile = NULL) {
       	sample.name <- bam
       stat <- utilsFanc::add.column.fanc(df1 = stat, df2 = data.frame(sample.name = rep(sample.name, nrow(stat))), pos = 1)
       return(stat)
-  	}, mc.cores = threads, mc.cleanup = T) %>% Reduce(rbind, .)
+  	}, threads = threads) %>% Reduce(rbind, .)
 
 
   #stat <- data.frame(regional = regional, total = total, pct = regional/total)
@@ -23,3 +23,4 @@ pct.capture <- function(bams, df, threads, outfile = NULL) {
   }
   return(stat)
 }
+
