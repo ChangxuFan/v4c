@@ -1,8 +1,8 @@
 read.hic.core <- function(.hic, region1, region2 = NULL,
-                          observed.or.oe, normalization, resolution, 
+                          observed.or.oe, normalization, resolution,
                           juicer.out.file = NULL,
                           java.path = "/opt/apps/java/jdk1.8.0_92/bin/java",
-                          use.1.6 = T, return.mat = F, return.frame = F, print.cmd = F, 
+                          use.1.6 = T, return.mat = F, return.frame = F, print.cmd = F,
                           juicer.path.legacy = "/bar/cfan/software/juicer/SLURM/scripts/juicer_tools.jar",
                           juicer.path.1.6 = "~/software/juicer-1.6/SLURM/scripts/juicer_tools.jar") {
   # note: .hic could be a url
@@ -11,13 +11,13 @@ read.hic.core <- function(.hic, region1, region2 = NULL,
   } else {
     juicer.path <- juicer.path.legacy
   }
-  
+
   if (is.null(region2)) {
     region2 <- region1
   } else {
     stop("currently region2 has to equal region1")
   }
-  
+
   regions.in <- list(r1 = region1, r2 = region2)
   rm(region1); rm(region2)
   regions.in <- lapply(regions.in, function(r) {
@@ -34,7 +34,7 @@ read.hic.core <- function(.hic, region1, region2 = NULL,
     res <- res %>% sub("-", ":", .)
     return(res)
   })
-  
+
   if (is.null(juicer.out.file))
     juicer.out.file <- tempfile()
 
@@ -48,7 +48,7 @@ read.hic.core <- function(.hic, region1, region2 = NULL,
       invisible(system(cmd, intern = T))
     }
   }
-  
+
   regions.out <- lapply(regions.in, function(r) {
     r.start.given <- sub("(.+):(.+):(.+)", "\\2", r) %>% as.numeric()
     r.start <- resolution * ceiling(r.start.given/resolution)
@@ -75,7 +75,7 @@ read.hic.core <- function(.hic, region1, region2 = NULL,
   } else {
     i <- 1; j <- 1; x <- 1
   }
-  mat <- Matrix::sparseMatrix(i = i, j = j, x=x, 
+  mat <- Matrix::sparseMatrix(i = i, j = j, x=x,
                               dims = sapply(regions.out, length),
                               dimnames = regions.out %>% `names<-`(NULL))
   mat <- mat + Matrix::t(mat) - Matrix::diag(Matrix::diag(mat))
@@ -84,11 +84,11 @@ read.hic.core <- function(.hic, region1, region2 = NULL,
   }
   grs.out <- lapply(c("r1", "r2"), function(r) {
     chr <- regions.in[[r]] %>% gsub(":.+$", "",.)
-    gr <- paste0(chr, ":", regions.out[[r]] + 1, "-", regions.out[[r]] + resolution) %>% 
+    gr <- paste0(chr, ":", regions.out[[r]] + 1, "-", regions.out[[r]] + resolution) %>%
       utilsFanc::loci.2.df(loci.vec = ., return.gr = T)
     return(gr)
   }) %>% `names<-`(c("r1", "r2"))
-  cm <- ContactMatrix(matrix = mat, anchor1 = grs.out$r1, anchor2 = grs.out$r2) 
+  cm <- ContactMatrix(matrix = mat, anchor1 = grs.out$r1, anchor2 = grs.out$r2)
   if (return.frame == T) {
     int <- deflate(x = cm, use.zero = T)
     return(int@interactions)
@@ -96,16 +96,16 @@ read.hic.core <- function(.hic, region1, region2 = NULL,
   return(cm)
 }
 
-read.hic <- function(.hic.vec, 
-                     region1, region2 = NULL, 
-                     observed.or.oe = "observed", 
-                     normalization = c("NONE", "VC_SQRT", "VC"), 
+read.hic <- function(.hic.vec,
+                     region1, region2 = NULL,
+                     observed.or.oe = "observed",
+                     normalization = c("NONE", "VC_SQRT", "VC"),
                      resolution = c(1000, 5000, 10000, 25000),
                      use.1.6 = T, print.cmd = F,
                      threads.norm = 1, threads.res = 1, threads.sample = 1,
                      java.path = "/opt/apps/java/jdk1.8.0_92/bin/java",
                      juicer.path.legacy = "/bar/cfan/software/juicer/SLURM/scripts/juicer_tools.jar",
-                     juicer.path.1.6 = "~/software/juicer-1.6/SLURM/scripts/juicer_tools.jar", 
+                     juicer.path.1.6 = "~/software/juicer-1.6/SLURM/scripts/juicer_tools.jar",
                      ...) {
   if (is.null(names(.hic.vec))) {
     names(.hic.vec) <- .hic.smart.name(.hic.vec = .hic.vec)
@@ -124,10 +124,10 @@ read.hic <- function(.hic.vec,
         # if (grepl("NK1.+neg", .hic)) {
         #   browser()
         # }
-        cm <- read.hic.core(.hic = .hic, observed.or.oe = observed.or.oe, normalization = norm, 
-                            region1 = region1, region2 = region2, 
+        cm <- read.hic.core(.hic = .hic, observed.or.oe = observed.or.oe, normalization = norm,
+                            region1 = region1, region2 = region2,
                             resolution = res, return.mat = F,
-                            java.path = java.path, print.cmd = print.cmd, 
+                            java.path = java.path, print.cmd = print.cmd,
                             use.1.6 = use.1.6, juicer.path.legacy = juicer.path.legacy,
                             juicer.path.1.6 = juicer.path.1.6)
         intSet <- deflate(x = cm, use.zero = T)
@@ -150,8 +150,8 @@ read.hic <- function(.hic.vec,
 
 contact.summary <- function(ins, gi, gi.is.list = F, gi.name.col,
                             assay, samples = NULL,
-                            sum.fun = sum, 
-                            do.donut = F, donut.center, donut.peri, 
+                            sum.fun = sum,
+                            do.donut = F, donut.center, donut.peri,
                             donut.name = NULL, overwrite.peri = T,
                             bin.size,
                             coldata = NULL, stat.formula = NULL, stat.fun, stat.params = NULL) {
@@ -167,28 +167,28 @@ contact.summary <- function(ins, gi, gi.is.list = F, gi.name.col,
   }
   samples <- colnames(ins)
   gi.list <- lapply(1:length(gi), function(i) return(gi[i]))
-  
+
   names(gi.list) <- sapply(gi, function(x) return(mcols(x)[, gi.name.col]))
   int.stat.list <- lapply(gi.list, function(gi) {
     int.name <- mcols(gi)[, gi.name.col]
     ins.sub <- subsetByOverlaps(x = ins, ranges = gi, ignore.strand = T)
-    int.stat <- assays(ins.sub)[[assay]] %>% apply(2, FUN = sum.fun) %>% 
+    int.stat <- assays(ins.sub)[[assay]] %>% apply(2, FUN = sum.fun) %>%
       as.matrix() %>% t()
     rownames(int.stat) <- int.name
     expanded <- lapply(samples, function(sample) {
-      cm <- inflate(ins.sub, rows = anchors(gi)$first, columns = anchors(gi)$second, 
+      cm <- inflate(ins.sub, rows = anchors(gi)$first, columns = anchors(gi)$second,
                     assay = assay, sample = sample, sparse = T) %>% cm.add.dimnames()
       return(cm)
     })
     names(expanded) <- samples
-    res <- list(int.name = int.name, int.stat = int.stat, 
+    res <- list(int.name = int.name, int.stat = int.stat,
                 ins.sub = ins.sub, gi = gi, expanded = expanded)
     return(res)
   })
   int.stat <- lapply(int.stat.list, function(x) {
     return(x$int.stat)
   }) %>% Reduce(rbind, .)
-  
+
   if (do.donut == T) {
     if (identical(all.equal(sum.fun, mean), TRUE)) {
       areas <- lapply(gi.list, gi.area, bin.size = bin.size)
@@ -206,17 +206,17 @@ contact.summary <- function(ins, gi, gi.is.list = F, gi.name.col,
     rownames(donut.hole.ratio) <- "donut.hole.ratio"
     int.stat <- rbind(int.stat, donut.hole.ratio)
     if (overwrite.peri == T)
-      int.stat <- int.stat %>% .[! rownames(.) == donut.peri, ] 
+      int.stat <- int.stat %>% .[! rownames(.) == donut.peri, ]
   }
-  int.stat.melt <- int.stat %>% as.data.frame() %>% mutate(., int.name = rownames(.)) %>% 
-    reshape2::melt(id.vars = "int.name", variable.name = "sample", 
+  int.stat.melt <- int.stat %>% as.data.frame() %>% mutate(., int.name = rownames(.)) %>%
+    reshape2::melt(id.vars = "int.name", variable.name = "sample",
                    value.name = "int.freq")
   if (!is.null(coldata)) {
     if (! "sample" %in% colnames(coldata))
       coldata$sample <- rownames(coldata)
     int.stat.melt <- left_join(int.stat.melt, coldata)
   }
-  
+
   if (!is.null(stat.formula)) {
     p.df <- lapply(stat.formula, function(formula) {
       vec.list <- formula.parse.fanc(formula = formula, df = int.stat.melt)
@@ -227,7 +227,7 @@ contact.summary <- function(ins, gi, gi.is.list = F, gi.name.col,
   } else {
     p.df <- NULL
   }
-  res <- list(stat = int.stat, stat.melt = int.stat.melt, 
+  res <- list(stat = int.stat, stat.melt = int.stat.melt,
               p.df = p.df,
               details = int.stat.list)
   return(res)
@@ -246,15 +246,15 @@ contact.plot.bar <- function(df, x, y, fill, sum.to.1 = F, filter.col = fill,
   }
 
   if (sum.to.1 == T) {
-    df <- df %>% group_by(!!as.name(x)) %>% 
-      mutate(!!y := !!as.name(y)/sum(!!as.name(y))) %>% 
+    df <- df %>% group_by(!!as.name(x)) %>%
+      mutate(!!y := !!as.name(y)/sum(!!as.name(y))) %>%
       ungroup()
   }
   df[, y] <- df[, y] %>% round(digits = 5)
   p <- ggpubr::ggbarplot(df, x = x, y = y, fill = fill, label = T, color = fill, alpha = 0.75,
-                    lab.pos = "in", title = title) + 
+                    lab.pos = "in", title = title) +
     theme(aspect.ratio = 1)
-  
+
   if (!is.null(plot.out)) {
     dir.create(dirname(plot.out), showWarnings = F, recursive = T)
     ggsave(plot.out, p, dpi = 100, width = 6 , height = 5, units = "in")
@@ -262,14 +262,14 @@ contact.plot.bar <- function(df, x, y, fill, sum.to.1 = F, filter.col = fill,
   return(p)
 }
 
-contact.pipe <- function(anchor1, anchor2, gi = NULL, gi.name.col, 
-                         intSet, assay, samples = NULL, sum.fun = sum, 
-                         resolution, 
+contact.pipe <- function(anchor1, anchor2, gi = NULL, gi.name.col,
+                         intSet, assay, samples = NULL, sum.fun = sum,
+                         resolution,
                          sum.to.1 = T,
-                         out.dir, root.name = NULL, 
+                         out.dir, root.name = NULL,
                          write.anchors = T, do.plot = T,
-                         do.donut = F, donut.center, donut.peri, 
-                         coldata = NULL, 
+                         do.donut = F, donut.center, donut.peri,
+                         coldata = NULL,
                          donut.name = NULL, overwrite.peri = T, bin.size,
                          stat.formula = NULL, stat.fun, stat.params = NULL) {
   if (!is.null(coldata)) {
@@ -287,7 +287,7 @@ contact.pipe <- function(anchor1, anchor2, gi = NULL, gi.name.col,
     gi <- GInteractions(anchor1, anchor2)
   }
   if (write.anchors == T) {
-    utilsFanc::write.zip.fanc(anchors(gi, "first") %>% utilsFanc::gr.fit2bin(bin.size = resolution, expand = T), 
+    utilsFanc::write.zip.fanc(anchors(gi, "first") %>% utilsFanc::gr.fit2bin(bin.size = resolution, expand = T),
                               out.file = paste0(out.dir, "/", root.name, "_anchor1.bed"))
     utilsFanc::write.zip.fanc(anchors(gi, "second") %>% utilsFanc::gr.fit2bin(bin.size = resolution, expand = T),
                               out.file = paste0(out.dir, "/", root.name, "_anchor2.bed"))
@@ -295,31 +295,31 @@ contact.pipe <- function(anchor1, anchor2, gi = NULL, gi.name.col,
   contact.stat <- contact.summary(ins = intSet, gi = gi, gi.is.list = F,
                           gi.name.col = gi.name.col, assay = assay,
                           samples = samples, sum.fun = sum.fun,
-                          do.donut = do.donut, donut.center = donut.center, 
+                          do.donut = do.donut, donut.center = donut.center,
                           donut.peri = donut.peri, donut.name = donut.name,
                           overwrite.peri = overwrite.peri, bin.size = bin.size,
-                          coldata = coldata, 
-                          stat.formula = stat.formula, stat.fun = stat.fun, 
+                          coldata = coldata,
+                          stat.formula = stat.formula, stat.fun = stat.fun,
                           stat.params = stat.params)
-  
+
   if (!is.null(contact.stat$p.df)) {
-    write.table(contact.stat$p.df, paste0(out.dir, "/", root.name, "_pvalues.tsv"), 
+    write.table(contact.stat$p.df, paste0(out.dir, "/", root.name, "_pvalues.tsv"),
                 sep = "\t", quote = F, row.names = F, col.names = T)
   }
   if (do.plot == T) {
     p1 <- contact.plot.bar(df = contact.stat$stat.melt,
-                           x = "sample", y = "int.freq", fill = "int.name", 
+                           x = "sample", y = "int.freq", fill = "int.name",
                            sum.to.1 = sum.to.1, title = root.name,
                            plot.out = paste0(out.dir, "/", root.name, "_bar.pdf"))
 
     if (!is.null(coldata)) {
       contact.stat$stat.melt <- left_join(contact.stat$stat.melt, coldata) %>% filter(int.name != "donut.hole.ratio")
-      p1.1 <- ggbarplot(contact.stat$stat.melt, x = "Ly49D", y = "int.freq", fill = "int.name", 
+      p1.1 <- ggbarplot(contact.stat$stat.melt, x = "Ly49D", y = "int.freq", fill = "int.name",
                         position = position_dodge(), color = "black", alpha = 0.5, add = "mean_sd",
                         add.params = list(size = 1), size = 1) +
         geom_point(aes(fill = int.name, shape = bio.rep), position = position_dodge(width = 0.8),
                    size = 3.0, color = "grey50") +
-        theme_pubr(base_size = 18, legend = "right") + 
+        theme_pubr(base_size = 18, legend = "right") +
         theme(aspect.ratio = 1) +
         ggtitle(root.name) +
         ggsave(paste0(out.dir, "/", root.name, "_bar_coldata.pdf"), height = 4, width = 8,
@@ -327,15 +327,15 @@ contact.pipe <- function(anchor1, anchor2, gi = NULL, gi.name.col,
     } else {
       p1.1 <- NULL
     }
-    if (sum.to.1 == T) { 
+    if (sum.to.1 == T) {
       p2 <- contact.plot.bar(df = contact.stat$stat.melt,
-                             x = "sample", y = "int.freq", fill = "int.name", 
+                             x = "sample", y = "int.freq", fill = "int.name",
                              sum.to.1 = F, title = root.name,
                              plot.out = paste0(out.dir, "/", root.name, "_bar_ori.pdf"))
     } else {
       p2 <- NULL
     }
-    
+
     if (do.donut == T && !is.null(coldata)) {
       if (!"sample" %in% col(coldata)) {
         coldata$sample <- rownames(coldata)
@@ -343,24 +343,24 @@ contact.pipe <- function(anchor1, anchor2, gi = NULL, gi.name.col,
       pd.df <- contact.stat$stat.melt %>% left_join(coldata) %>% filter(int.name == "donut.hole.ratio")
       # if (identical(all.equal(sum.fun, mean), T)) {
       #   pd.df$grouping <- paste0(pd.df$int.name, "..", pd.df$bio.rep)
-      #   pd <- pd.df %>% ggplot(aes(x = Ly49D, y = int.freq, group = grouping, color = int.name)) + 
-      #     geom_line(aes(linetype = bio.rep)) + 
+      #   pd <- pd.df %>% ggplot(aes(x = Ly49D, y = int.freq, group = grouping, color = int.name)) +
+      #     geom_line(aes(linetype = bio.rep)) +
       #     geom_point() +
-      #     theme_pubr(legend = "right") + 
+      #     theme_pubr(legend = "right") +
       #     theme(aspect.ratio = 1.75) +
-      #     ggsave(paste0(out.dir, "/", root.name, "_donut_cmp.pdf"), height = 4, width = 4, 
+      #     ggsave(paste0(out.dir, "/", root.name, "_donut_cmp.pdf"), height = 4, width = 4,
       #            dpi = 100)
       # } else {
       #   pd <- ggline(data = pd.df, x = "Ly49D", y = "int.freq", shape = "bio.rep",
-      #                color = "bio.rep") + 
-      #     ggsave(paste0(out.dir, "/", root.name, "_donut_ratio_line.pdf"), height = 4, width = 3, 
+      #                color = "bio.rep") +
+      #     ggsave(paste0(out.dir, "/", root.name, "_donut_ratio_line.pdf"), height = 4, width = 3,
       #            dpi = 100)
       # }
       pd <- ggline(data = pd.df, x = "Ly49D", y = "int.freq", shape = "bio.rep",
                    color = "bio.rep") +
         ggsave(paste0(out.dir, "/", root.name, "_donut_ratio_line.pdf"), height = 4, width = 3,
                dpi = 100)
-      
+
     } else {
       pd <- NULL
     }
@@ -370,19 +370,19 @@ contact.pipe <- function(anchor1, anchor2, gi = NULL, gi.name.col,
   p.list <- list(p1 = p1, p1.1 = p1.1, p2 = p2, pd = pd)
 
   res <- list(contact.stat = contact.stat, gi = gi, p.list = p.list)
-  
+
   saveRDS(res, paste0(out.dir, "/", root.name, ".Rds"))
   return(res)
-  
+
 }
 
-contact.pipe.m <- function(hico.by.mapq, norms, 
-                           anchor1 = NULL, anchor2 = NULL, gi = NULL, gi.name.col, 
-                           sum.fun, resolution, 
-                           do.donut = F, donut.center, donut.peri, 
+contact.pipe.m <- function(hico.by.mapq, norms,
+                           anchor1 = NULL, anchor2 = NULL, gi = NULL, gi.name.col,
+                           sum.fun, resolution,
+                           do.donut = F, donut.center, donut.peri,
                            donut.name = NULL, overwrite.peri = T, coldata = NULL,
-                           out.dir, 
-                           stat.formula = NULL, stat.fun, stat.params = NULL, 
+                           out.dir,
+                           stat.formula = NULL, stat.fun, stat.params = NULL,
                            ...) {
   if (identical(all.equal(sum.fun, sum), TRUE)) {
     sum.to.1 <- T
@@ -397,18 +397,23 @@ contact.pipe.m <- function(hico.by.mapq, norms,
     l <- lapply(norms, function(norm) {
       # c.o: contact object
       out.dir <- paste0(out.dir, "/", mapq, "..", norm, "/")
-      if (!is.null(coldata))
-        rownames(coldata) <- paste0(rownames(coldata), "_", mapq) %>% 
+      if (!is.null(coldata)) {
+        rownames(coldata) <- paste0(rownames(coldata), "_", mapq) %>%
           sub("inter30", "inter_30", .)
+        if (!grepl(".hic$", rownames(coldata)[1])) {
+          rownames(coldata) <- paste0(rownames(coldata), ".hic")
+        }
+      }
+
       c.o <- contact.pipe(anchor1 = anchor1, anchor2 = anchor2, gi = gi,
                           gi.name.col = gi.name.col,
                           intSet = hico[[paste0("res_", resolution)]],
                           assay = norm, sum.fun = sum.fun,
                           out.dir = out.dir, sum.to.1 = sum.to.1,
-                          do.donut = do.donut, donut.center = donut.center, donut.peri = donut.peri, 
+                          do.donut = do.donut, donut.center = donut.center, donut.peri = donut.peri,
                           overwrite.peri = overwrite.peri, coldata = coldata, bin.size = resolution,
                           write.anchors = F,
-                          stat.formula = stat.formula, stat.fun = stat.fun, 
+                          stat.formula = stat.formula, stat.fun = stat.fun,
                           stat.params = stat.params, ...)
       return(c.o)
     })
@@ -429,13 +434,15 @@ contact.pipe.m <- function(hico.by.mapq, norms,
 
     return(NULL)
   })
-  p.df <- lapply(names(grid), function(name) {
-    x <- grid[[name]]
-    df <- x$contact.stat$p.df %>% mutate(id = name)
-    return(df)
-  }) %>% Reduce(rbind, .)
-  write.table(p.df, paste0(out.dir, "/pvalue.tsv"),
-              sep = "\t", quote = F, row.names = F, col.names = T)
+  if (!is.null(stat.formula)) {
+    p.df <- lapply(names(grid), function(name) {
+      x <- grid[[name]]
+      df <- x$contact.stat$p.df %>% mutate(id = name)
+      return(df)
+    }) %>% Reduce(rbind, .)
+    write.table(p.df, paste0(out.dir, "/pvalue.tsv"),
+                sep = "\t", quote = F, row.names = F, col.names = T)
+  }
   return(grid)
 }
 
@@ -460,38 +467,38 @@ contact.map.viz <- function(mat, color.range = NULL,
       max.quantile <- 1
     if (is.null(min.quantile))
       min.quantile <- 0
-    
+
     color.max <- quantile(mat, max.quantile)
     color.min <- ifelse(zero.as.min, 0, quantile(mat, min.quantile) )
     color.range <- c(color.min, color.max)
   }
-  
+
   col_fun = colorRamp2(color.range, c("white", color))
   if (add.text) {
     cell_fun <- function(j, i, x, y, width, height, fill) {
-      grid.text(round(mat[i, j], digits = digits), x, y, 
+      grid.text(round(mat[i, j], digits = digits), x, y,
                 gp = gpar(fontsize = fontsize))
     }
   } else {
     cell_fun <- NULL
   }
-  
+
   if (!is.null(row.assign.vec)) {
-    row_split <- row.assign.vec[rownames(mat)] %>% 
+    row_split <- row.assign.vec[rownames(mat)] %>%
       factor(., levels = unique(.))
   } else {
     row_split <- NULL
   }
   if (!is.null(col.assign.vec)) {
-    col_split <- col.assign.vec[colnames(mat)] %>% 
+    col_split <- col.assign.vec[colnames(mat)] %>%
       factor(., levels = unique(.))
   } else {
     col_split <- NULL
   }
   hm <- Heatmap(mat, col = col_fun,
                 cell_fun = cell_fun,
-                cluster_rows = cluster_rows, cluster_columns = cluster_columns, 
-                clustering_distance_rows = clustering_distance_rows, 
+                cluster_rows = cluster_rows, cluster_columns = cluster_columns,
+                clustering_distance_rows = clustering_distance_rows,
                 clustering_distance_columns = clustering_distance_columns,
                 row_split = row_split, column_split = col_split, border = T
   )
@@ -517,7 +524,7 @@ contact.match.bg.core <- function(fg.gi, bg.gi, fg.id.col = NULL, bg.id.col = NU
     bg.id.col <- "id"
     bg.gi$id <- paste0("bg_", 1:length(bg.gi))
   }
-  
+
   if (! fg.id.col %in% colnames(mcols(fg.gi)))
     stop("! fg.id.col %in% colnames(mcols(fg.gi))")
   if (! bg.id.col %in% colnames(mcols(bg.gi)))
@@ -530,7 +537,7 @@ contact.match.bg.core <- function(fg.gi, bg.gi, fg.id.col = NULL, bg.id.col = NU
   }
   gr.cov <- rowRanges(normo.se)
   gr.cov$cov <- assay(normo.se, "VC..cpm") %>% rowMeans()
-  
+
   regions(fg.gi) <- regions(fg.gi) %>% plyranges::join_overlap_inner(gr.cov)
   regions(bg.gi) <- regions(bg.gi) %>% plyranges::join_overlap_inner(gr.cov)
   bg.gi.chosen.list <- list()
@@ -552,10 +559,10 @@ contact.match.bg.core <- function(fg.gi, bg.gi, fg.id.col = NULL, bg.id.col = NU
     }) %>% Reduce(rbind, .)
     bg.id.chosen <- scFanc::bg.gen.2(mat = cov.mat, fg.vec = fg.id, n.bg.each = n.bg.each, no.replace = T,
                           method = "euclidean")
-    
+
     # assess how well the bg is chosen:
     fgbg <- c(fg, bg)
-    df <- data.frame(a1 = anchors(fgbg, "first")$cov, 
+    df <- data.frame(a1 = anchors(fgbg, "first")$cov,
                      a2 = anchors(fgbg, "second")$cov,
                      fg.id = mcols(fgbg)[, fg.id.col],
                      bg.id = mcols(fgbg)[, bg.id.col])
@@ -563,20 +570,20 @@ contact.match.bg.core <- function(fg.gi, bg.gi, fg.id.col = NULL, bg.id.col = NU
     df$hl[1:length(fg)] <- "fg"
     df$hl[df$bg.id %in% bg.id.chosen] <- "bg"
     pl <- list()
-    pl$fg <- scFanc::xy.plot(df = df, x = "a1", y = "a2", 
+    pl$fg <- scFanc::xy.plot(df = df, x = "a1", y = "a2",
                              highlight.var = "fg.id", highlight.ptsize = 0.2,
                              highlight.values = fg.id, title = "fg")
-    
-    pl$bg <- scFanc::xy.plot(df = df, x = "a1", y = "a2", 
+
+    pl$bg <- scFanc::xy.plot(df = df, x = "a1", y = "a2",
                              highlight.var = "bg.id", highlight.ptsize = 0.2,
                              highlight.values = bg.id.chosen, title = "bg")
-    trash <- scFanc::wrap.plots.fanc(plot.list = pl, 
+    trash <- scFanc::wrap.plots.fanc(plot.list = pl,
                                      plot.out = paste0(out.dir, "/assess/", fg.id, ".png"))
     # bg.list[[fg.id]] <- data.frame(fg.id = fg.id, bg.id = bg.id.chosen)
-    
+
     bg.gi.chosen.list[[fg.id]] <- bg.gi %>% .[mcols(.)[, bg.id.col] %in% bg.id.chosen]
     bg.gi.chosen.list[[fg.id]]$fg.id <- fg.id
-    
+
     bg.gi <- bg.gi %>% .[! mcols(.)[, bg.id.col] %in% bg.id.chosen]
   }
   bg.gi.chosen <- Reduce(c, bg.gi.chosen.list)
@@ -586,13 +593,13 @@ contact.match.bg.core <- function(fg.gi, bg.gi, fg.id.col = NULL, bg.id.col = NU
                        out.file = paste0(out.dir, "/bg.lr"))
   saveRDS(bg.gi.chosen, paste0(out.dir, "/bg.chosen.Rds"))
   return(bg.gi.chosen)
-  
+
 }
 
 contact.map.collapse <- function(cs, regions.include = NULL, samples.include = NULL,
-                                 out.dir, 
+                                 out.dir,
                                  plot.each = F, per.sample = T, per.region = T,
-                                 sample.coldata = NULL, split.column, split.vec = NULL, 
+                                 sample.coldata = NULL, split.column, split.vec = NULL,
                                  normalize = T, take.mean = T,
                                  center.piece = c(2,2),
                                  return.mat.list = F, ...) {
@@ -603,7 +610,7 @@ contact.map.collapse <- function(cs, regions.include = NULL, samples.include = N
     regions <- regions.include
   }
   # assuming all regions have the same samples
-  
+
   mat.list <- lapply(regions, function(region) {
     region.sum <- cs$details[[region]]
     samples <- names(region.sum$expanded)
@@ -624,7 +631,7 @@ contact.map.collapse <- function(cs, regions.include = NULL, samples.include = N
     names(mat.list) <- paste0(region, "..", samples)
     return(mat.list)
   }) %>% Reduce(c, .)
-  
+
   if (normalize == T) {
     mat.list <- mat.list %>% lapply(function(x) return(x/sum(x)))
   }
@@ -635,8 +642,8 @@ contact.map.collapse <- function(cs, regions.include = NULL, samples.include = N
     sample = sub("^.+\\.\\.", "", names(mat.list))
   )
   rownames(center.df) <- NULL
-  
-  
+
+
   if (return.mat.list == T) {
     return(mat.list)
   }
@@ -644,33 +651,33 @@ contact.map.collapse <- function(cs, regions.include = NULL, samples.include = N
   if (per.sample == T) {
     mat.sums$per.sample <- lapply(samples, function(sample) {
       mat.list.sub <- mat.list[grepl(paste0("\\.\\.", sample),names(mat.list))]
-      mat.sum <- mat.list.collapse.core(mat.list = mat.list.sub, take.mean = T, 
+      mat.sum <- mat.list.collapse.core(mat.list = mat.list.sub, take.mean = T,
                                         plot.out = paste0(out.dir, "/per_sample/", sample, ".png"), ...)
       # saveRDS(mat.sum, paste0(out.dir, "/per_sample/", sample, ".Rds"))
       return(mat.sum)
     })
     names(mat.sums$per.sample) <- samples
-    p <- ggbarplot(data = center.df, x = "sample", y = "center.pct", add = c("mean_se", "jitter")) + 
+    p <- ggbarplot(data = center.df, x = "sample", y = "center.pct", add = c("mean_se", "jitter")) +
       coord_flip() +
       ggsave(paste0(out.dir, "/per_sample/summary_bar.pdf"), width = 7, height = 5, units = "in")
-    
+
   }
-  
+
   if (per.region == T) {
     mat.sums$per.region <- lapply(regions, function(region) {
       mat.list.sub <- mat.list[grepl(paste0(region, "\\.\\."),names(mat.list))]
-      mat.sum <- mat.list.collapse.core(mat.list = mat.list.sub, take.mean = T, 
+      mat.sum <- mat.list.collapse.core(mat.list = mat.list.sub, take.mean = T,
                                         plot.out = paste0(out.dir, "/per_region/", region, ".png"), ...)
       # saveRDS(mat.sum, paste0(out.dir, "/per_region/", region, ".Rds"))
       return(mat.sum)
     })
     names(mat.sums$per.region) <- regions
-    p <- ggbarplot(data = center.df, x = "region", y = "center.pct", add = c("mean_se", "jitter")) + 
+    p <- ggbarplot(data = center.df, x = "region", y = "center.pct", add = c("mean_se", "jitter")) +
       coord_flip() +
       ggsave(paste0(out.dir, "/per_region/summary_bar.pdf"), width = 7, height = 0.3*length(regions) + 1, units = "in")
   }
-  
-  mat.sums$all <- mat.list.collapse.core(mat.list = mat.list, take.mean = T, 
+
+  mat.sums$all <- mat.list.collapse.core(mat.list = mat.list, take.mean = T,
                                     plot.out = paste0(out.dir, "/collapse_all.png"), ...)
   if (!is.null(sample.coldata)) {
     utilsFanc::check.intersect(x = samples, y = rownames(sample.coldata),
@@ -684,10 +691,10 @@ contact.map.collapse <- function(cs, regions.include = NULL, samples.include = N
                                  x.name =  "samples", y.name = "names(split.vec)")
       split.vec <- split.vec[samples]
     }
-    mat.sums$all.split <- mat.list %>% split(., f = split.vec) %>% 
+    mat.sums$all.split <- mat.list %>% split(., f = split.vec) %>%
       mapply(function(mat.l, name) {
-        mat.list.collapse.core(mat.list = mat.l, take.mean = T, 
-                               plot.out = paste0(out.dir, "/collapse_",name,".png"), ...) %>% 
+        mat.list.collapse.core(mat.list = mat.l, take.mean = T,
+                               plot.out = paste0(out.dir, "/collapse_",name,".png"), ...) %>%
           return()
       }, ., names(.), SIMPLIFY = F)
   }
@@ -711,12 +718,12 @@ mat.list.collapse.core <- function(mat.list, take.mean = T, keep.dimnames = F,
 
 
 SIPG.pipe <- function(fg.gi, hico.list, normo.list,
-                      fg.ext,fg.id.col, 
-                      n.bg.each = 10, distance.wobble, 
+                      fg.ext,fg.id.col,
+                      n.bg.each = 10, distance.wobble,
                       resolutions, mapqs, norms,
                       center.piece = NULL, color.range = NULL,
                       sample.coldata = NULL, split.column = "Ly49D",
-                      out.dir, plot.only = F, plot.bar = T, 
+                      out.dir, plot.only = F, plot.bar = T,
                       plot.mat.grid = T, fg.region.name.col = "forth",
                       replot.collapse = F,
                       stat.formula = NULL, stat.fun, stat.params = NULL,
@@ -740,16 +747,16 @@ SIPG.pipe <- function(fg.gi, hico.list, normo.list,
         if (plot.only == F) {
           hico <- hico.list[[mapq]][[paste0("res_", res)]]
           normo.se <- normo.list[[mapq]][[paste0("res_", res)]]
-          bg.gi <- contact.match.bg.core(fg.gi = fg.gi, bg.gi = hico@interactions, fg.id.col = fg.id.col, 
+          bg.gi <- contact.match.bg.core(fg.gi = fg.gi, bg.gi = hico@interactions, fg.id.col = fg.id.col,
                                          bezle = ceiling(fg.ext/res),
-                                         n.bg.each = n.bg.each, normo.se = normo.se, 
+                                         n.bg.each = n.bg.each, normo.se = normo.se,
                                          distance.wobble = distance.wobble,
                                          out.dir = paste0(sub.dir, "/bg/match_bg/"))
           fg.gi.ext <- fg.gi
           regions(fg.gi.ext) <- regions(fg.gi.ext) + fg.ext
           bg.gi.ext <- bg.gi
           regions(bg.gi.ext) <- regions(bg.gi.ext) + fg.ext
-          
+
           gi.list <- list(fg = fg.gi.ext, bg = bg.gi.ext)
           pipe.list <- utilsFanc::safelapply(names(gi.list), function(gi.name) {
             gi <- gi.list[[gi.name]]
@@ -763,14 +770,14 @@ SIPG.pipe <- function(fg.gi, hico.list, normo.list,
               per.region <- F
             }
             pipe.out <- contact.pipe(gi = gi, gi.name.col = gi.name.col, intSet = hico,
-                                     assay = norm, sum.fun = sum, resolution = res, 
+                                     assay = norm, sum.fun = sum, resolution = res,
                                      sum.to.1 = T, write.anchors = T, do.donut = F,
                                      out.dir = paste0(sub.dir, "/", gi.name,"/contact_pipe/"),
                                      do.plot = F)
-            mat.sums <- contact.map.collapse(cs = pipe.out$contact.stat, 
+            mat.sums <- contact.map.collapse(cs = pipe.out$contact.stat,
                                              out.dir = paste0(sub.dir, "/", gi.name,"/collapse/"),
-                                             plot.each = plot.each, per.sample = T, per.region = per.region, 
-                                             normalize = T, take.mean = T, center.piece = center.piece, 
+                                             plot.each = plot.each, per.sample = T, per.region = per.region,
+                                             normalize = T, take.mean = T, center.piece = center.piece,
                                              color.range = color.range, width = 550, height = 500,
                                              add.text = F, sample.coldata = sample.coldata,split.column = split.column,
                                              ...)
@@ -782,15 +789,15 @@ SIPG.pipe <- function(fg.gi, hico.list, normo.list,
             res$type <- name
             return(res)
           }) %>% Reduce(rbind, .)
-          center.df.2 <- center.df %>% group_by(region, type) %>% summarise(center.pct = mean(center.pct)) %>% 
+          center.df.2 <- center.df %>% group_by(region, type) %>% summarise(center.pct = mean(center.pct)) %>%
             ungroup() %>% as.data.frame()
           if (!is.null(sample.coldata)) {
-            center.df.3 <- left_join(center.df, sample.coldata[, c("sample", split.column)]) %>% 
-              group_by(region, type, !!as.name(split.column)) %>% summarise(center.pct = mean(center.pct)) %>% 
+            center.df.3 <- left_join(center.df, sample.coldata[, c("sample", split.column)]) %>%
+              group_by(region, type, !!as.name(split.column)) %>% summarise(center.pct = mean(center.pct)) %>%
               ungroup() %>% as.data.frame()
           }
           else {
-            center.df.3 <- NULL 
+            center.df.3 <- NULL
           }
           result <- list(fg.gi = fg.gi, fg.gi.ext = fg.gi.ext,
                          bg.gi = bg.gi, bg.gi.ext = bg.gi.ext,
@@ -802,16 +809,16 @@ SIPG.pipe <- function(fg.gi, hico.list, normo.list,
           pl <- result$pl
         }
         if (plot.bar == T) {
-          pl$per.sample <- ggbarplot(data = result$center.df, x = "sample", y = "center.pct", 
-                                     color = "type", add = c("mean_sd"), 
-                                     position = position_dodge()) + 
+          pl$per.sample <- ggbarplot(data = result$center.df, x = "sample", y = "center.pct",
+                                     color = "type", add = c("mean_sd"),
+                                     position = position_dodge()) +
             geom_jitter(size = 0.05, position = position_jitterdodge(jitter.width = 0.2), aes(color = type),
                         alpha = 0.5) +
-            coord_flip() + 
+            coord_flip() +
             ggsave(paste0(sub.dir, "/contrast_per_sample.pdf"), width = 6, height = 5, units = "in", dpi = 100)
-          pl$mean <- ggbarplot(data = result$center.df.2, x = "type", y = "center.pct", 
-                               color = "black", fill = "type", add = c("mean_sd"), 
-                               add.params = list(size = 1.0), alpha = 0.5) + 
+          pl$mean <- ggbarplot(data = result$center.df.2, x = "type", y = "center.pct",
+                               color = "black", fill = "type", add = c("mean_sd"),
+                               add.params = list(size = 1.0), alpha = 0.5) +
             geom_jitter(size = 0.5, aes(fill = type), color = "grey50",
                         alpha = 1) +
             coord_flip() + theme(aspect.ratio = 1) + theme_pubr(base_size = 18) +
@@ -826,21 +833,21 @@ SIPG.pipe <- function(fg.gi, hico.list, normo.list,
               res <- data.frame(comp = formula, p.value = p)
               return(res)
             }) %>% Reduce(rbind, .)
-            write.table(p.df, paste0(sub.dir, "/contrast_collapse_pvalue.tsv"), sep = "\t", quote = F, 
+            write.table(p.df, paste0(sub.dir, "/contrast_collapse_pvalue.tsv"), sep = "\t", quote = F,
                         row.names = F, col.names = T)
           }
-          
+
           if (!is.null(sample.coldata)) {
             if (is.null(result$center.df.3)) {
-              result$center.df.3 <- left_join(result$center.df, sample.coldata[, c("sample", split.column)]) %>% 
-                group_by(region, type, !!as.name(split.column)) %>% summarise(center.pct = mean(center.pct)) %>% 
+              result$center.df.3 <- left_join(result$center.df, sample.coldata[, c("sample", split.column)]) %>%
+                group_by(region, type, !!as.name(split.column)) %>% summarise(center.pct = mean(center.pct)) %>%
                 ungroup() %>% as.data.frame()
             }
-            pl$mean_split <- ggbarplot(data = result$center.df.3, x = split.column, y = "center.pct", 
+            pl$mean_split <- ggbarplot(data = result$center.df.3, x = split.column, y = "center.pct",
                                  color = "black", fill = "type",  alpha = 0.5, size = 1,
                                  add = c("mean_sd"), position = position_dodge(),
-                                 add.params = list(size = 1.0)) + 
-              geom_jitter(size = 0.8, aes(fill = type), color = "grey50", 
+                                 add.params = list(size = 1.0)) +
+              geom_jitter(size = 0.8, aes(fill = type), color = "grey50",
                           alpha = 1, position = position_jitterdodge()) +
               coord_flip() +
               theme_pubr(base_size = 18) + theme(aspect.ratio = 1) +
@@ -863,34 +870,34 @@ SIPG.pipe <- function(fg.gi, hico.list, normo.list,
                 if (!is.null(sample.coldata)) {
                   samples <- names(mats) %>% sub(".+\\.\\.", "", .)
                   split.id <- sample.coldata %>% as.data.frame() %>% .[samples, split.column]
-                  in.mat.list <- c(in.mat.list, 
+                  in.mat.list <- c(in.mat.list,
                                mats %>% split(., f = split.id))
                 }
                 out.mat.list <- lapply(in.mat.list, function(mats) {
                   mat.list.collapse.core(mat.list = mats, take.mean = T, keep.dimnames = T)
                 })
-                
+
                 region <- names(mats)[1] %>% sub("\\.\\..+$", "", .)
                 names(out.mat.list) <- paste0(region, "..", "mean_", names(out.mat.list))
                 return(out.mat.list)
               }) %>% Reduce(c, .)
           }
-          
-          
-          mat.list.to.grid <- c(result$pipe.list$fg$mat.sums$mat.list, 
+
+
+          mat.list.to.grid <- c(result$pipe.list$fg$mat.sums$mat.list,
                                 result$pipe.list$fg$mat.sums$per.region)
-          pl$mat.grid <-  mat.list.to.grid %>% split(., f = sub("^.+\\.\\.", "", names(.))) %>% 
+          pl$mat.grid <-  mat.list.to.grid %>% split(., f = sub("^.+\\.\\.", "", names(.))) %>%
             lapply(function(mat.l) {
               sample <- names(mat.l)[1] %>% sub("^.+\\.\\.", "", .)
               plot.out <- paste0(sub.dir, "/mat_grid/", sample, ".png")
-              mat.grid <- mat.l %>% 
-                mat.add.by.dimnames(parse.region.ids = T, sep = "_", 
+              mat.grid <- mat.l %>%
+                mat.add.by.dimnames(parse.region.ids = T, sep = "_",
                                     col.region.order = region.order,
                                     row.region.order = region.order, add.transpose = T)
-              
+
               p <- contact.map.viz(mat = mat.grid, row.assign.vec = fg.bin.assign,
                                    col.assign.vec = fg.bin.assign, add.text = F,
-                                   width = 1600, height = 1500, 
+                                   width = 1600, height = 1500,
                                    plot.out = plot.out, ...)
               return(p)
             })
@@ -904,16 +911,16 @@ SIPG.pipe <- function(fg.gi, hico.list, normo.list,
             per.region <- F
             plot.each <- F
             per.sample <- F
-            trash <- contact.map.collapse(cs = result$pipe.list[[gi.name]]$pipe.out$contact.stat, 
+            trash <- contact.map.collapse(cs = result$pipe.list[[gi.name]]$pipe.out$contact.stat,
                                           out.dir = paste0(sub.dir, "/", gi.name,"/collapse/"),
-                                          plot.each = plot.each, per.sample = per.sample, per.region = per.region, 
-                                          normalize = T, take.mean = T, center.piece = center.piece, 
+                                          plot.each = plot.each, per.sample = per.sample, per.region = per.region,
+                                          normalize = T, take.mean = T, center.piece = center.piece,
                                           color.range = color.range, width = 550, height = 500,
                                           add.text = F, sample.coldata = sample.coldata, split.column = "Ly49D",
                                           ...)
             return()
           })
-          
+
         }
         result$pl <- pl
         saveRDS(result, paste0(sub.dir, "/result.Rds"))
@@ -950,9 +957,11 @@ gi.remove.bezles <- function(gi, n) {
 
 hico.list.gen <- function(inter.hic, inter30.hic, region, colData, save.rds = NULL) {
   hico.list <- lapply(list(inter.hic, inter30.hic), function(.hic.vec) {
-    hico <- read.hic(.hic.vec = .hic.vec, region1 = region, observed.or.oe = "observed", 
+    print(paste0("Processing these files: \n",
+                 paste0(.hic.vec, collapse = "\n")))
+    hico <- read.hic(.hic.vec = .hic.vec, region1 = region, observed.or.oe = "observed",
                      normalization = c("NONE", "VC_SQRT", "VC"), use.1.6 = T,
-                     threads.norm = 1, threads.res = 1, threads.sample = 1, 
+                     threads.norm = NULL, threads.res = 1, threads.sample = NULL,
                      colData = colData)
     return(hico)
   })
